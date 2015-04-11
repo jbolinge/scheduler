@@ -7,6 +7,7 @@ import itertools
 import random
 import sys
 import math
+import logging
 
 def gen_permutations(n, mvsc_list):							#Generate all possible combinations for a week's schedule
 	p = itertools.permutations(list(range(1,n+1)))
@@ -101,9 +102,11 @@ def gen_schedules(week_num, schedule_cand, target_num):		#Generate schedule cand
 					overall_best_cost = cs
 					best_cost = cs
 					print 'best_cost %d' % best_cost
+					logging.info('candidate found, cost %d', overall_best_cost)
 				else:
 					temp = cs
 					best_cost = target_num + 13
+					logging.info('week %d, cost %d', week_num, cs)
 					print 'week %d best_cost %d' % (week_num, cs)
 					gen_schedules(target_num, schedule_cand, target_num + 13)
 					best_cost = temp
@@ -124,6 +127,7 @@ def read_input(filename):
 		lines = [[int(s) for s in i.split(',')] for i in file_data]
 		assert len(lines) == 13
 	except:
+		logging.info('error opening schedule file %s',filename)
 		print 'file format invalid: all numbers separated by commas'
 		print 'line 1 is last week of previous year'
 		print 'line 2 is first week call from previous year'
@@ -163,11 +167,13 @@ def save_result(filename):
 	np.savetxt(filename, schedules[-1], delimiter=',')
 
 if __name__ == "__main__":
+	logging.basicConfig(filename='scheduler.log', format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO)
 	sys.setrecursionlimit(1000)
 	try:
 		filename = sys.argv[1]
 		savename = sys.argv[2]
 	except:
+		logging.info('error with command line arguments')
 		print'Please supply the name of the input file and output file'
 		sys.exit()
 	global schedules, perm_list, best_cost, overall_best_cost
@@ -179,8 +185,10 @@ if __name__ == "__main__":
 	position_dict = {0:'Call', 1:'Long', 2:'Short', 3:'MVSC', 4:'Vacation'}
 	schedule_cand = read_input(filename)
 	print schedule_cand
+	logging.info('beginning schedule generation')
 	print 'Generating schedules'
 	gen_schedules(1, schedule_cand, 14)
+	logging.info('finished schedule generation, best cost %d', cost(schedules[-1]))
 	print schedules
 	print 'final best cost: %d' % cost(schedules[-1])
 	save_result(savename)
