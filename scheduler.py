@@ -117,8 +117,59 @@ def gen_schedules(week_num, schedule_cand, target_num):		#Generate schedule cand
 	schedule_cand[week_num] = temp
 	return
 
+def read_input(filename):
+	with open(filename, 'r') as f:
+		file_data = f.readlines()
+	try:		
+		lines = [[int(s) for s in i.split(',')] for i in file_data]
+		assert len(lines) == 13
+	except:
+		print 'file format invalid: all numbers separated by commas'
+		print 'line 1 is last week of previous year'
+		print 'line 2 is first week call from previous year'
+		print 'line 3 is vacation schedule'
+		print 'line 4 is 1st person calls'
+		print 'line 5 is 1st person early req (-1 if none)'
+		print '.....'
+		print 'line 12 is 5th person calls'
+		print 'line 13 is 5th person early'
+	schedule_cand = np.zeros((53,5))
+	schedule_cand[0] = np.array(lines[0])
+	schedule_cand[1,0] = lines[1][0]
+	schedule_cand[1:,4] = np.array(lines[2])
+	schedule_cand = set_calls(schedule_cand, 1, lines[3], is_call=True)
+	schedule_cand = set_calls(schedule_cand, 2, lines[5], is_call=True)
+	schedule_cand = set_calls(schedule_cand, 3, lines[7], is_call=True)
+	schedule_cand = set_calls(schedule_cand, 4, lines[9], is_call=True)
+	schedule_cand = set_calls(schedule_cand, 5, lines[11], is_call=True)
+	schedule_cand = set_calls(schedule_cand, 1, lines[4], is_call=False)
+	schedule_cand = set_calls(schedule_cand, 2, lines[6], is_call=False)
+	schedule_cand = set_calls(schedule_cand, 3, lines[8], is_call=False)
+	schedule_cand = set_calls(schedule_cand, 4, lines[10], is_call=False)
+	schedule_cand = set_calls(schedule_cand, 5, lines[12], is_call=False)
+	return schedule_cand
+
+def set_calls(schedule_cand, emp_num, list_weeks, is_call=True):
+	if is_call:
+		index = 0
+	else:
+		index = 2
+	for i in list_weeks:
+		if i != -1:
+			schedule_cand[i, index] = emp_num
+	return schedule_cand
+
+def save_result(filename):
+	np.savetxt(filename, schedules[-1], delimiter=',')
+
 if __name__ == "__main__":
 	sys.setrecursionlimit(1000)
+	try:
+		filename = sys.argv[1]
+		savename = sys.argv[2]
+	except:
+		print'Please supply the name of the input file and output file'
+		sys.exit()
 	global schedules, perm_list, best_cost, overall_best_cost
 	overall_best_cost = 9999
 	schedules = list()
@@ -126,19 +177,10 @@ if __name__ == "__main__":
 	best_cost = 14
 	person_dict = {1:'Jason', 2:'Brian', 3:'Dick', 4:'Mark', 5:'Tim'}
 	position_dict = {0:'Call', 1:'Long', 2:'Short', 3:'MVSC', 4:'Vacation'}
-	schedule_cand = np.zeros((53,5))
-	schedule_cand[0] = np.array([1, 4, 5, 3, 2])    #Last week of previous year's schedule
-	schedule_cand[1][0] = 4.   #Call for 1st week from previous year's schedule
-	vacations = np.array([3,1,4,2,3,3,2,5,3,3,1,2,4,1,5,4,1,0,4,5,2,5,4,1,2,2,4,3,5,2,3,1,5,4,5,1,2,4,5,3,1,2,5,3,0,1,4,3,5,1,4,2])
-	schedule_cand[1:,4] = vacations
-	schedule_cand[5][0] = 1.
-	schedule_cand[21][0] = 4.
-	schedule_cand[27][0] = 3.
-	schedule_cand[40][0] = 2.
-	schedule_cand[48][0] = 5.
-	schedule_cand[52][0] = 1.
+	schedule_cand = read_input(filename)
 	print schedule_cand
 	print 'Generating schedules'
 	gen_schedules(1, schedule_cand, 14)
 	print schedules
 	print 'final best cost: %d' % cost(schedules[-1])
+	save_result(savename)
