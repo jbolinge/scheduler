@@ -4,17 +4,15 @@ import sys
 import scheduler as sc
 import multiprocessing
 
-def run_scheduler(filename):
-	global counter
+def run_scheduler(filename, counter):
 	savename = filename[:-4] + str(counter) + '.csv'
 	sc.run_schedule(filename, savename)
 
 def use_mp(filename, runs):
-	global counter
 	counter = 0
 	jobs = []
 	for i in range(runs):
-		p = multiprocessing.Process(target=run_scheduler, args=(filename,))
+		p = multiprocessing.Process(target=run_scheduler, args=(filename, counter))
 		jobs.append(p)
 		p.start()
 		counter += 1
