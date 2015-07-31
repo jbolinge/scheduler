@@ -9,9 +9,11 @@ import sys
 import math
 import logging
 
-def gen_permutations(n, mvsc_list):							#Generate all possible combinations for a week's schedule
+def gen_permutations(n, mvsc_list, regina_list):							#Generate all possible combinations for a week's schedule
 	p = itertools.permutations(list(range(1,n+1)))
-	return np.array([list(w) for w in p if w[3] in mvsc_list])
+	temp = np.array([list(w) for w in p if w[3] in mvsc_list])
+	temp2 = np.array([list(w) for w in temp if w[-1] in regina_list])
+	return np.array([list(w) for w in temp2 if w[2] not in regina_list])
 
 def cost(schedule_cand):
 	tot_cost = 0
@@ -25,33 +27,40 @@ def cost(schedule_cand):
 				tot_cost += 6
 			if (schedule_cand[i][0] == schedule_cand[i-1][3]):	#Cost to be call following MVSC
 				tot_cost += 1
-			if (schedule_cand[i][4] == schedule_cand[i-1][0] or schedule_cand[i][4] == schedule_cand[i-1][2]):	 #Cost reduction to be on call or early prior to vacation
+			if (schedule_cand[i][4] == schedule_cand[i-1][0] or schedule_cand[i][4] == schedule_cand[i-1][2] or schedule_cand[i][4] == schedule_cand[i-1][5]):	 #Cost reduction to be on call or early prior to vacation
 				tot_cost -= 1
-			tot_cost += 1
+			#tot_cost += 1
 	return tot_cost
 
 def is_schedule_valid(schedule_cand, target_num):			#Check if valid schedule (approx equal number of MVSC, call, and short weeks)
 	div_factor = target_num / 53.
 	for i in range(1,6):
-		if (schedule_cand[1:target_num,0]==i).sum() > math.ceil(11 * div_factor):	#Equal number of call weeks
+		if (schedule_cand[1:target_num,0]==i).sum() > math.ceil(9 * div_factor):	#Equal number of call weeks
 			return False
-		if (schedule_cand[1:target_num,2]==i).sum() > math.ceil(12 * div_factor):	#Equal number of early weeks
+		if (i > 2 and i < 6):
+			if (schedule_cand[1:target_num,2]==i).sum() > math.ceil(18 * div_factor):	#Equal number of early weeks for Dick, Mark and Tim
+				return False
+		if (schedule_cand[1:target_num,3]==i).sum() > math.ceil(14 * div_factor):	#Equal number of MVSC weeks for Brian, Jason, Dick, and new guy
 			return False
-		if (schedule_cand[1:target_num,3]==i).sum() > math.ceil(18 * div_factor):	#Equal number of MVSC weeks
-			return False
+		if (i < 3 or i > 5):
+			if (schedule_cand[1:target_num,5]==i).sum() > math.ceil(18 * div_factor):  #Equal number of Regina weeks for Brian, Jason, and new guy
+				return False
 	return True
 
 def are_shifts_equal(schedule_cand, target_num):
-	sum_shifts = np.zeros((3,5))
-	for i in range(1,6):
+	sum_shifts = np.zeros((4,6))
+	for i in range(1,7):
 		sum_shifts[0,i-1] = (schedule_cand[1:target_num,0]==i).sum()
 		sum_shifts[1,i-1] = (schedule_cand[1:target_num,2]==i).sum()
 		sum_shifts[2,i-1] = (schedule_cand[1:target_num,3]==i).sum()
-	for i in range(3):
+		sum_shifts[3,i-1] = (schedule_cand[1:target_num,5]==i).sum()
+	for i in range(4):
 		b = np.unique(sum_shifts[i,:])
-		if (i < 2 and b[-1] - b[0] > 1):  #equal call and early (within 1)
+		if (i == 0 and b[-1] - b[0] > 1):  #equal call (within 1)
+			#print 'failed for equal call'
 			return False
-		if (i == 2 and b[-1] - b[1] > 1):  #equal MVSC (within 1)
+		if (i != 0 and b[-1] - b[1] > 2):  #equal MVSC/early/Regina (within 2)
+			#print 'failed for equal mvsc/early/regina'
 			return False
 	return True
 
@@ -69,16 +78,21 @@ def no_prune(schedule_cand, week_num):
 	if (best_cost < 9999):
 		cs = cost(schedule_cand)
 		if (cs > best_cost or cs > overall_best_cost):
+			#print 'failed for cost of %d, week %d' % (cs, week_num)
 			return False
-	if (week_num > 7):
-		for i in range(1,6):
-			if (schedule_cand[week_num-8:week_num,0]==i).sum() < 1:	#at least 1 call every 8 weeks
+	if (week_num > 10):
+		for i in range(1,7):
+			if (schedule_cand[week_num-10:week_num,0]==i).sum() < 1:	#at least 1 call every 10 weeks
+				#print 'failed call'
 				return False
-			if (schedule_cand[week_num-8:week_num,2]==i).sum() < 1:	#at least 1 early every 8 weeks
+			if ((schedule_cand[week_num-6:week_num,2]==i).sum() + (schedule_cand[week_num-6:week_num,5]==i).sum()) < 1:	#at least 1 early or regina every 6 weeks
+				#print 'failed regina/early'
 				return False
 			if i < 3:
-				if (schedule_cand[week_num-6:week_num,3]==i).sum() < 1:	#at least 1 mvsc every 6 weeks
+				if (schedule_cand[week_num-8:week_num,3]==i).sum() < 1:	#at least 1 mvsc every 8 weeks
+					#print 'failed mvsc'
 					return False
+	#print 'passed prune week %d' % week_num
 	return True
 
 
@@ -90,6 +104,7 @@ def gen_schedules(week_num, schedule_cand, target_num):		#Generate schedule cand
 		if (are_shifts_equal(schedule_cand, target_num)):
 			cs = cost(schedule_cand)
 			if (cs < best_cost and cs < overall_best_cost):
+				#print 'week_num %d, cost %d' % (week_num, cs)
 				if (target_num == 53):
 					schedules.append(np.array(schedule_cand))
 					overall_best_cost = cs
@@ -97,7 +112,7 @@ def gen_schedules(week_num, schedule_cand, target_num):		#Generate schedule cand
 					logging.info('candidate found, cost %d', overall_best_cost)
 				else:
 					temp = cs
-					best_cost = target_num + 13
+					best_cost = temp + (2 * target_num)
 					logging.info('week %d, cost %d', week_num, cs)
 					gen_schedules(target_num, schedule_cand, target_num + 13)
 					best_cost = temp
@@ -114,9 +129,9 @@ def gen_schedules(week_num, schedule_cand, target_num):		#Generate schedule cand
 def read_input(filename):
 	with open(filename, 'r') as f:
 		file_data = f.readlines()
-	try:		
+	try:
 		lines = [[int(s) for s in i.split(',')] for i in file_data]
-		assert len(lines) == 13
+		assert len(lines) == 15
 	except:
 		logging.error('error opening schedule file %s',filename)
 		print 'file format invalid: all numbers separated by commas'
@@ -126,9 +141,9 @@ def read_input(filename):
 		print 'line 4 is 1st person calls'
 		print 'line 5 is 1st person early req (-1 if none)'
 		print '.....'
-		print 'line 12 is 5th person calls'
-		print 'line 13 is 5th person early'
-	schedule_cand = np.zeros((53,5))
+		print 'line 14 is 6th person calls'
+		print 'line 15 is 6th person early'
+	schedule_cand = np.zeros((53,6))
 	schedule_cand[0] = np.array(lines[0])
 	schedule_cand[1,0] = lines[1][0]
 	schedule_cand[1:,4] = np.array(lines[2])
@@ -137,16 +152,20 @@ def read_input(filename):
 	schedule_cand = set_calls(schedule_cand, 3, lines[7], is_call=True)
 	schedule_cand = set_calls(schedule_cand, 4, lines[9], is_call=True)
 	schedule_cand = set_calls(schedule_cand, 5, lines[11], is_call=True)
+	schedule_cand = set_calls(schedule_cand, 6, lines[13], is_call=True)
 	schedule_cand = set_calls(schedule_cand, 1, lines[4], is_call=False)
 	schedule_cand = set_calls(schedule_cand, 2, lines[6], is_call=False)
 	schedule_cand = set_calls(schedule_cand, 3, lines[8], is_call=False)
 	schedule_cand = set_calls(schedule_cand, 4, lines[10], is_call=False)
 	schedule_cand = set_calls(schedule_cand, 5, lines[12], is_call=False)
+	schedule_cand = set_calls(schedule_cand, 6, lines[14], is_call=False)
 	return schedule_cand
 
 def set_calls(schedule_cand, emp_num, list_weeks, is_call=True):
 	if is_call:
 		index = 0
+	elif (emp_num in regina_list):
+		index = 5
 	else:
 		index = 2
 	for i in list_weeks:
@@ -155,17 +174,18 @@ def set_calls(schedule_cand, emp_num, list_weeks, is_call=True):
 	return schedule_cand
 
 def save_result(filename):
-	np.savetxt(filename, schedules[-1], delimiter=',')
-	logging.info('saved schedule to %s', filename)
+	np.savetxt('schedules/' + filename, schedules[-1], delimiter=',')
+	logging.info('saved schedule to schedules/%s', filename)
 
 def run_schedule(s_filename, savename):
-	global schedules, perm_list, best_cost, overall_best_cost
-	logging.basicConfig(filename=savename + '.log', format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO, mode='w')
+	global schedules, perm_list, best_cost, overall_best_cost, regina_list
+	logging.basicConfig(filename='log/' + savename + '.log', format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO, mode='w')
 	sys.setrecursionlimit(1000)
 	overall_best_cost = 9999
 	schedules = list()
-	perm_list = gen_permutations(5, [1, 2, 3])
-	best_cost = 14
+	regina_list = [1,2,6]
+	perm_list = gen_permutations(6, [1, 2, 3, 6], regina_list)
+	best_cost = 25
 	schedule_cand = read_input(s_filename)
 	logging.info('beginning schedule generation')
 	gen_schedules(1, schedule_cand, 14)
@@ -179,6 +199,6 @@ if __name__ == "__main__":
 	except:
 		print'Please supply the name of the input file and output file'
 		sys.exit()
-	person_dict = {1:'Jason', 2:'Brian', 3:'Dick', 4:'Mark', 5:'Tim'}
-	position_dict = {0:'Call', 1:'Long', 2:'Short', 3:'MVSC', 4:'Vacation'}
-	run_schedule(s_filename, savename)	
+	person_dict = {1:'Jason', 2:'Brian', 3:'Dick', 4:'Mark', 5:'Tim', 6:'New Guy'}
+	position_dict = {0:'Call', 1:'Long', 2:'Short', 3:'MVSC', 4:'Vacation', 5:'Regina'}
+	run_schedule(s_filename, savename)
