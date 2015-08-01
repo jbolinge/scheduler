@@ -29,7 +29,7 @@ def cost(schedule_cand):
 				tot_cost += 1
 			if (schedule_cand[i][4] == schedule_cand[i-1][0] or schedule_cand[i][4] == schedule_cand[i-1][2] or schedule_cand[i][4] == schedule_cand[i-1][5]):	 #Cost reduction to be on call or early prior to vacation
 				tot_cost -= 1
-			#tot_cost += 1
+			tot_cost += 1
 	return tot_cost
 
 def is_schedule_valid(schedule_cand, target_num):			#Check if valid schedule (approx equal number of MVSC, call, and short weeks)
