@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Schedule is Call, Long, Short, MVSC, Vacation
+#Schedule is Call, Long, Short, MVSC, Vacation, Regina
 
 import numpy as np
 import itertools
@@ -20,15 +20,16 @@ def cost(schedule_cand):
 	for i in range(1, len(schedule_cand)):
 		if (np.all(schedule_cand[i])):
 			if (schedule_cand[i][3] == schedule_cand[i-1][3]):   #Cost to be at MVSC consecutive weeks
-				tot_cost += 8
+				tot_cost += 7
 			if (schedule_cand[i][1] == schedule_cand[i-1][1]):   #Cost to be long consecutive weeks
-				tot_cost += 5
+				tot_cost += 4
 			if (i > 1 and schedule_cand[i][0] == schedule_cand[i-2][0]):	#Cost to be on call 2 times in 3 weeks
-				tot_cost += 6
+				tot_cost += 8
 			if (schedule_cand[i][0] == schedule_cand[i-1][3]):	#Cost to be call following MVSC
 				tot_cost += 1
 			if (schedule_cand[i][4] == schedule_cand[i-1][0] or schedule_cand[i][4] == schedule_cand[i-1][2] or schedule_cand[i][4] == schedule_cand[i-1][5]):	 #Cost reduction to be on call or early prior to vacation
 				tot_cost -= 1
+			tot_cost += len([q for q in range(6) if schedule_cand[i-1][q] == schedule_cand[i][q]]) #increase cost of being consecutive weeks anywhere
 			tot_cost += 1
 	return tot_cost
 
