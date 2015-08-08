@@ -20,18 +20,22 @@ def cost(schedule_cand):
 	for i in range(1, len(schedule_cand)):
 		if (np.all(schedule_cand[i])):
 			if (schedule_cand[i][3] == schedule_cand[i-1][3]):   #Cost to be at MVSC consecutive weeks
-				tot_cost += 7
+				tot_cost += 5
 			if (schedule_cand[i][1] == schedule_cand[i-1][1]):   #Cost to be long consecutive weeks
-				tot_cost += 4
-			if (i > 1 and schedule_cand[i][0] == schedule_cand[i-2][0]):	#Cost to be on call 2 times in 3 weeks
-				tot_cost += 100
-			if (schedule_cand[i][0] == schedule_cand[i-1][3]):	#Cost to be call following MVSC
-				tot_cost += 1
-			if (schedule_cand[i][4] == schedule_cand[i-1][0] or schedule_cand[i][4] == schedule_cand[i-1][2] or schedule_cand[i][4] == schedule_cand[i-1][5]):	 #Cost reduction to be on call or early prior to vacation
-				tot_cost -= 1
-			tot_cost += len([q for q in range(6) if schedule_cand[i-1][q] == schedule_cand[i][q]]) #increase cost of being consecutive weeks anywhere
+				tot_cost += 5
 			if (schedule_cand[i-1][0] == schedule_cand[i][0]):  #cost of back to back call
-				tot_cost += 8000
+				tot_cost += 1000
+			if (i > 1 and schedule_cand[i][0] == schedule_cand[i-2][0]):	#Cost to be on call 2 times in 3 weeks
+				tot_cost += 800
+			if (i > 2 and schedule_cand[i][0] == schedule_cand[i-3][0]):	#Cost to be on call 2 times in 4 weeks
+				tot_cost += 50
+			if (i > 3 and schedule_cand[i][0] == schedule_cand[i-4][0]):	#Cost to be on call 2 times in 5 weeks
+				tot_cost += 10
+			if (schedule_cand[i][0] == schedule_cand[i-1][3]):	#Cost to be call following MVSC
+				tot_cost += 3
+			if (schedule_cand[i][4] == schedule_cand[i-1][0] or schedule_cand[i][4] == schedule_cand[i-1][2] or schedule_cand[i][4] == schedule_cand[i-1][5]):	 #Cost reduction to be on call or early prior to vacation
+				tot_cost -= 2
+			tot_cost += len([q for q in range(6) if schedule_cand[i-1][q] == schedule_cand[i][q]]) #increase cost of being consecutive weeks anywhere
 	sum_shifts = np.zeros((4,6))
 	for i in range(1,7):
 		sum_shifts[0,i-1] = (schedule_cand[1:,0]==i).sum()
@@ -43,7 +47,7 @@ def cost(schedule_cand):
 		if (i == 0 and b[-1] - b[0] > 1):  #equal call (within 1)
 			#print 'failed for equal call'
 			tot_cost += (2000 * (b[-1] - b[0]))
-		if (i != 0 and b[-1] - b[1] > 1):  #equal MVSC/early/Regina (within 2)
+		if (i != 0 and b[-1] - b[1] > 1):  #equal MVSC/early/Regina (within 1)
 			#print 'failed for equal mvsc/early/regina'
 			tot_cost += (500 * (b[-1] - b[1]))
 	return tot_cost
@@ -54,7 +58,7 @@ def get_cands(week):
 	for perm in perm_list:
 		truth_array = (master_cand[week]==perm)
 		if (np.array([truth_array[f] for f in filled]).all()):
-			if (master_cand[week-1][4] != perm[0]):	#No call following vacation or back to back call
+			if (master_cand[week-1][4] != perm[0]):	#No call following vacation
 				cands.append(perm)
 	rand_index = random.randint(0, len(cands) - 1)
 	return cands[rand_index]
@@ -70,16 +74,17 @@ def rand_fill(schedule_cand):
 		schedule_cand[i,:] = get_cands(i)
 	return schedule_cand
 
-def gen_schedules(schedule_cand):		#Generate schedule candidates using DFS
+def gen_schedules(schedule_cand):		#Generate schedule candidates using simulated annealing
 	global master_cand
 	master_cand = schedule_cand.copy()
-	init_temp = 10000
+	init_temp = 1000
 	temperature = init_temp
 	base_temp = 0.01
-	cooling_factor = 0.95
+	cooling_factor = 0.99
 	iters_per_temp = 100
-	reheating_frequency = 0.01
-	reheating_factor = 100
+	reheating_frequency = 0.002
+	reheating_factor = 10
+	reset_frequency = 0.0002
 	overall_best_cost = 99999999
 	schedule_cand = rand_fill(schedule_cand)
 	best_schedule = schedule_cand.copy()
@@ -92,11 +97,11 @@ def gen_schedules(schedule_cand):		#Generate schedule candidates using DFS
 			new_cost = cost(schedule_cand)
 			if (accept(new_cost, current_cost, temperature) > random.random()):
 				current_cost = new_cost
-				print 'Current cost: %d\tTemp: %.2f' % (current_cost, temperature)
+				#print 'Current cost: %d\tTemp: %.3f' % (current_cost, temperature)
 				if current_cost < overall_best_cost:
 					overall_best_cost = current_cost
 					best_schedule = schedule_cand.copy()
-					print 'new overall best: %d' % (overall_best_cost)
+					#print 'new overall best: %d\tTemperature = %.2f' % (overall_best_cost, temperature)
 					#print best_schedule
 			else:
 				schedule_cand[week] = temp
@@ -105,6 +110,10 @@ def gen_schedules(schedule_cand):		#Generate schedule candidates using DFS
 			temperature *= reheating_factor
 			if temperature > init_temp:
 				temperature = init_temp
+		if random.random() < reset_frequency:
+			schedule_cand = best_schedule.copy()
+			current_cost = overall_best_cost
+			#print 'Reset to best_schedule.  Temperature = %.2f\tCost = %d' % (temperature, overall_best_cost)
 	print best_schedule
 	return best_schedule
 
@@ -172,7 +181,7 @@ def run_schedule(s_filename, savename):
 	perm_list = gen_permutations(6, [1, 2, 3, 6], regina_list)
 	best_cost = 25
 	schedule_cand = read_input(s_filename)
-	logging.info('beginning schedule generation')
+	logging.info('beginning schedule generation using simulated annealing')
 	schedule_cand = gen_schedules(schedule_cand)
 	logging.info('finished schedule generation, best cost %d', cost(schedule_cand))
 	save_result(savename, schedule_cand)
