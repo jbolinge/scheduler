@@ -36,5 +36,5 @@ if __name__ == '__main__':
 	print 'Beginning %d runs, check logs for progress.' % runs
 	global use_sa
 	use_sa = True
-	use_mp(filename, runs, use_sa)
+	use_mp(filename, runs)
 	print '%d runs completed.' % runs
