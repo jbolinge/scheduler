@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 #Schedule is Call, Long, Short, MVSC, Vacation, Regina
+#1:'Jason', 2:'Brian', 3:'Dick', 4:'Mark', 5:'Tim', 6:'Ryan'
 
 import numpy as np
 import itertools
@@ -127,66 +128,23 @@ def gen_schedules(schedule_cand):		#Generate schedule candidates using simulated
 	return best_schedule
 
 def read_input(filename):
-	with open(filename, 'r') as f:
-		file_data = f.readlines()
-	try:
-		lines = [[int(s) for s in i.split(',')] for i in file_data]
-		assert len(lines) == 15
-	except:
-		logging.error('error opening schedule file %s',filename)
-		print 'file format invalid: all numbers separated by commas'
-		print 'line 1 is last week of previous year'
-		print 'line 2 is first week call from previous year'
-		print 'line 3 is vacation schedule'
-		print 'line 4 is 1st person calls'
-		print 'line 5 is 1st person early req (-1 if none)'
-		print '.....'
-		print 'line 14 is 6th person calls'
-		print 'line 15 is 6th person early'
-	schedule_cand = np.zeros((53,6))
-	schedule_cand[0] = np.array(lines[0])
-	schedule_cand[1,0] = lines[1][0]
-	schedule_cand[1:,4] = np.array(lines[2])
-	schedule_cand = set_calls(schedule_cand, 1, lines[3], is_call=True)
-	schedule_cand = set_calls(schedule_cand, 2, lines[5], is_call=True)
-	schedule_cand = set_calls(schedule_cand, 3, lines[7], is_call=True)
-	schedule_cand = set_calls(schedule_cand, 4, lines[9], is_call=True)
-	schedule_cand = set_calls(schedule_cand, 5, lines[11], is_call=True)
-	schedule_cand = set_calls(schedule_cand, 6, lines[13], is_call=True)
-	schedule_cand = set_calls(schedule_cand, 1, lines[4], is_call=False)
-	schedule_cand = set_calls(schedule_cand, 2, lines[6], is_call=False)
-	schedule_cand = set_calls(schedule_cand, 3, lines[8], is_call=False)
-	schedule_cand = set_calls(schedule_cand, 4, lines[10], is_call=False)
-	schedule_cand = set_calls(schedule_cand, 5, lines[12], is_call=False)
-	schedule_cand = set_calls(schedule_cand, 6, lines[14], is_call=False)
+	schedule_cand = np.genfromtxt(filename, delimiter=',')
+	assert schedule_cand.shape==(53,6)
 	return schedule_cand
-
-def set_calls(schedule_cand, emp_num, list_weeks, is_call=True):
-	global fixed_list
-	if is_call:
-		index = 0
-	else:
-		index = 2
-	for i in list_weeks:
-		if i != -1:
-			schedule_cand[i, index] = emp_num
-			fixed_list[(i,index)] = True
-	return schedule_cand
-
+	
 def save_result(filename, schedule_cand):
 	np.savetxt('schedules/' + filename, schedule_cand, delimiter=',')
 	logging.info('saved schedule to schedules/%s', filename)
 
 def run_schedule(s_filename, savename):
-	global schedules, perm_list, best_cost, overall_best_cost, regina_list, fixed_list
-	fixed_list = {(x,y):False for y in range(6) for x in range(1,53)}
+	global perm_list
 	logging.basicConfig(filename='log/' + savename + '.log', format='%(asctime)s %(message)s', \
 		datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO, mode='w')
-	schedules = list()
-	regina_list = [1, 2, 6]
+	regina_list = [1, 2, 5, 6]
 	mvsc_list = [1, 2, 3, 6]
 	perm_list = gen_permutations(6, mvsc_list, regina_list)
-	schedule_cand = read_input(s_filename)
+	schedule_cand = new_read_input(s_filename)
+	print schedule_cand
 	logging.info('beginning schedule generation using simulated annealing')
 	schedule_cand = gen_schedules(schedule_cand)
 	logging.info('finished schedule generation, best cost %d', cost(schedule_cand))
@@ -199,6 +157,4 @@ if __name__ == "__main__":
 	except:
 		print'Please supply the name of the input file and output file'
 		sys.exit()
-	person_dict = {1:'Jason', 2:'Brian', 3:'Dick', 4:'Mark', 5:'Tim', 6:'Ryan'}
-	position_dict = {0:'Call', 1:'Long', 2:'Short', 3:'MVSC', 4:'Vacation', 5:'Regina'}
 	run_schedule(s_filename, savename)
