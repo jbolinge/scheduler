@@ -4,10 +4,11 @@ import sys
 import scheduler as sc
 import sim_anneal as sa
 import multiprocessing
+import json
 
 def run_scheduler(filename, counter):
-	savename = filename[:-4] + str(counter) + '.csv'
-	if use_sa:
+	savename = conf['output_file'] + str(counter) + '.csv'
+	if conf['use_sa']:
 		sa.run_schedule(filename, savename)
 	else:
 		sc.run_schedule(filename, savename)
@@ -24,17 +25,9 @@ def use_mp(filename, runs):
 		j.join()
 
 if __name__ == '__main__':
-	try:
-		runs = int(sys.argv[1])
-		filename = sys.argv[2]
-	except:
-		print'Please supply the number of runs (1-8) followed by the input file name'
-		sys.exit()
-	if (runs < 1 or runs > 8):
-		print'Please enter a valid number of runs (1-8)'
-		sys.exit()
-	print 'Beginning %d runs, check logs for progress.' % runs
-	global use_sa
-	use_sa = True
-	use_mp(filename, runs)
-	print '%d runs completed.' % runs
+	global conf
+	with open('config.json', 'r') as f:
+		conf = json.load(f)
+	print 'Beginning %d runs, check logs for progress.' % conf['num_cores']
+	use_mp(conf['input_file'], conf['num_cores'])
+	print '%d runs completed.' % conf['num_cores']

@@ -27,15 +27,15 @@ def cost(schedule_cand):
 			if (schedule_cand[i-1][0] == schedule_cand[i][0]):  #cost of back to back call
 				tot_cost += 2000
 			if (i > 1 and schedule_cand[i][0] == schedule_cand[i-2][0]):	#Cost to be on call 2 times in 3 weeks
-				tot_cost += 2000
+				tot_cost += 1000
 			if (i > 2 and schedule_cand[i][0] == schedule_cand[i-3][0]):	#Cost to be on call 2 times in 4 weeks
 				tot_cost += 50
 			if (i > 3 and schedule_cand[i][0] == schedule_cand[i-4][0]):	#Cost to be on call 2 times in 5 weeks
-				tot_cost += 5
-			if (schedule_cand[i][0] == schedule_cand[i-1][3]):	#Cost to be call following MVSC
+				tot_cost += 10
+			if (schedule_cand[i][0] == schedule_cand[i-1][5]):	#Cost to be call following Regina
 				tot_cost += 2
-			if (schedule_cand[i][4] == schedule_cand[i-1][0] or schedule_cand[i][4] == schedule_cand[i-1][2]):	 #Cost reduction to be on call or early prior to vacation
-				tot_cost -= 2
+			if (schedule_cand[i][4] == schedule_cand[i-1][0]):	 #Cost reduction to be on call prior to vacation
+				tot_cost -= 5
 			tot_cost += len([q for q in range(6) if schedule_cand[i-1][q] == schedule_cand[i][q]]) #increase cost of being consecutive weeks anywhere
 	sum_shifts = np.zeros((4,6))
 	for i in range(1,7):
@@ -131,7 +131,7 @@ def read_input(filename):
 	schedule_cand = np.genfromtxt(filename, delimiter=',')
 	assert schedule_cand.shape==(53,6)
 	return schedule_cand
-	
+
 def save_result(filename, schedule_cand):
 	np.savetxt('schedules/' + filename, schedule_cand, delimiter=',')
 	logging.info('saved schedule to schedules/%s', filename)
@@ -143,7 +143,7 @@ def run_schedule(s_filename, savename):
 	regina_list = [1, 2, 5, 6]
 	mvsc_list = [1, 2, 3, 6]
 	perm_list = gen_permutations(6, mvsc_list, regina_list)
-	schedule_cand = new_read_input(s_filename)
+	schedule_cand = read_input(s_filename)
 	print schedule_cand
 	logging.info('beginning schedule generation using simulated annealing')
 	schedule_cand = gen_schedules(schedule_cand)
