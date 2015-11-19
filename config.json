@@ -1,6 +1,6 @@
 {
     "input_file": "schedule_2015.csv",
-    "output_file": "2016_schedule_",
+    "output_file": "2016_schedule_1",
     "num_cores": 8,
     "use_sa": true
 }
