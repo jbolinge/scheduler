@@ -8,10 +8,7 @@ import json
 
 def run_scheduler(filename, counter):
 	savename = conf['output_file'] + str(counter) + '.csv'
-	if conf['use_sa']:
-		sa.run_schedule(filename, savename)
-	else:
-		sc.run_schedule(filename, savename)
+	sa.run_schedule(filename, savename)
 
 def use_mp(filename, runs):
 	counter = 0
